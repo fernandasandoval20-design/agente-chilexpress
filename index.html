@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agente Operativo — Chilexpress</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #171717;
+  --surface2: #202020;
+  --border: #2a2a2a;
+  --border2: #383838;
+  --text: #e4e4e4;
+  --text2: #888;
+  --text3: #4a4a4a;
+  --accent: #d4372a;
+  --accent2: #e85040;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --info: #60a5fa;
+  --danger: #f87171;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);overflow:hidden}
+
+/* LAYOUT */
+.app{display:grid;grid-template-rows:52px 1fr;height:100vh}
+header{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.25rem;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:28px;height:28px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:500;color:#fff}
+.logo-name{font-size:13px;font-weight:500;letter-spacing:.01em}
+.logo-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+.status{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.06em}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.body{display:grid;grid-template-columns:260px 1fr 320px;height:100%;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2)}
+.s-section{border-bottom:1px solid var(--border);padding:.875rem}
+.s-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.625rem}
+
+/* UPLOAD */
+.upload-zone{border:1px dashed var(--border2);padding:1rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(212,55,42,.05)}
+.upload-icon{font-size:20px;margin-bottom:6px;display:block}
+.upload-text{font-size:11px;color:var(--text2);line-height:1.5}
+.upload-text strong{color:var(--text);display:block;margin-bottom:2px;font-size:12px}
+#file-input{display:none}
+.file-ok{display:none;align-items:center;gap:6px;margin-top:8px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.18);padding:7px 9px;font-family:var(--mono);font-size:10px;color:var(--ok)}
+
+/* KPIs */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.kpi{background:var(--bg);border:1px solid var(--border);padding:8px 10px}
+.kpi-label{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.kpi-value{font-size:16px;font-weight:500;line-height:1}
+.kpi-sub{font-family:var(--mono);font-size:8px;color:var(--text3);margin-top:2px}
+.c-danger{color:var(--danger)}
+.c-ok{color:var(--ok)}
+.c-warn{color:var(--warn)}
+.c-info{color:var(--info)}
+
+/* QUICK Q */
+.q-list{display:flex;flex-direction:column;gap:4px}
+.q-btn{background:var(--bg);border:1px solid var(--border);padding:8px 9px;cursor:pointer;text-align:left;transition:all .15s;width:100%}
+.q-btn:hover{border-color:var(--border2);background:var(--surface2)}
+.q-tag{font-family:var(--mono);font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.q-text{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* DASHBOARD CENTER */
+.dashboard{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.875rem;background:var(--bg)}
+.dashboard::-webkit-scrollbar{width:3px}
+.dashboard::-webkit-scrollbar-thumb{background:var(--border2)}
+
+.upload-cta{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:12px;color:var(--text3);text-align:center;border:1px dashed var(--border);padding:2rem}
+.upload-cta .big-icon{font-size:48px;opacity:.25}
+.upload-cta p{font-family:var(--mono);font-size:11px;letter-spacing:.05em;max-width:280px;line-height:1.6}
+
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.chart-card{background:var(--surface);border:1px solid var(--border);padding:1rem}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:.875rem}
+.chart-wrap{position:relative;width:100%}
+.chart-wrap.h200{height:200px}
+.chart-wrap.h180{height:180px}
+.chart-wrap.h240{height:240px}
+
+/* bar table for causales */
+.bar-table{display:flex;flex-direction:column;gap:6px}
+.bar-row{display:grid;grid-template-columns:140px 1fr 60px;align-items:center;gap:8px}
+.bar-label{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{background:var(--surface2);height:6px;border-radius:0}
+.bar-fill{height:100%;border-radius:0;background:var(--accent);transition:width .4s}
+.bar-val{font-family:var(--mono);font-size:9px;color:var(--text3);text-align:right}
+
+/* CHAT RIGHT */
+.chat-panel{border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column}
+.chat-header{padding:.75rem 1rem;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.messages{flex:1;overflow-y:auto;padding:.875rem;display:flex;flex-direction:column;gap:10px}
+.messages::-webkit-scrollbar{width:3px}
+.messages::-webkit-scrollbar-thumb{background:var(--border2)}
+.msg{display:flex;gap:8px}
+.msg.user{flex-direction:row-reverse}
+.avatar{width:24px;height:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;font-weight:500;margin-top:2px}
+.av-a{background:var(--accent);color:#fff}
+.av-u{background:var(--surface2);color:var(--text2);border:1px solid var(--border2)}
+.bubble{padding:8px 11px;font-size:12px;line-height:1.65;max-width:240px;color:var(--text)}
+.msg.agent .bubble{background:var(--surface2);border:1px solid var(--border);border-top-left-radius:0}
+.msg.user .bubble{background:rgba(212,55,42,.1);border:1px solid rgba(212,55,42,.2);border-top-right-radius:0;color:var(--text)}
+.typing{display:flex;gap:4px;align-items:center;padding:2px 0}
+.tdot{width:4px;height:4px;border-radius:50%;background:var(--text3);animation:bounce .9s infinite}
+.tdot:nth-child(2){animation-delay:.2s}
+.tdot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-4px)}}
+.input-row{border-top:1px solid var(--border);padding:.625rem .875rem;display:flex;gap:6px;background:var(--bg)}
+.input-row input{flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--sans);font-size:12px;padding:7px 10px;outline:none;transition:border-color .15s}
+.input-row input:focus{border-color:var(--accent)}
+.input-row input::placeholder{color:var(--text3)}
+.send-btn{background:var(--accent);border:none;color:#fff;font-family:var(--mono);font-size:10px;padding:7px 12px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.send-btn:hover{background:var(--accent2)}
+
+/* tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{padding:.5rem .875rem;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">OP</div>
+      <div>
+        <div class="logo-name">Agente Operativo</div>
+        <div class="logo-sub">Chilexpress — SLA / Fallo / Backlog</div>
+      </div>
+    </div>
+    <div class="status"><span class="dot"></span>LISTO</div>
+  </header>
+
+  <div class="body">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="s-section">
+        <div class="s-title">Archivo de datos</div>
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <span class="upload-icon">📊</span>
+          <div class="upload-text"><strong>Sube el reporte Excel</strong>Reporte SLA / Fallo / Backlog<br>.xlsx — arrastra o haz clic</div>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" />
+        <div class="file-ok" id="file-ok">✓ <span id="file-name-label">—</span></div>
+      </div>
+
+      <div class="s-section" id="kpi-section" style="display:none">
+        <div class="s-title">Resumen del reporte</div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="kpi-label">Total piezas</div><div class="kpi-value c-info" id="k-total">—</div><div class="kpi-sub" id="k-sem">—</div></div>
+          <div class="kpi"><div class="kpi-label">Incumple ácido</div><div class="kpi-value c-danger" id="k-ia">—</div><div class="kpi-sub" id="k-ia-pct">—</div></div>
+          <div class="kpi"><div class="kpi-label">Cumple cía.</div><div class="kpi-value c-ok" id="k-cc">—</div><div class="kpi-sub" id="k-cc-pct">—</div></div>
+          <div class="kpi"><div class="kpi-label">Top fallo</div><div class="kpi-value c-warn" id="k-top" style="font-size:10px;margin-top:2px">—</div><div class="kpi-sub" id="k-top-n">—</div></div>
+        </div>
+      </div>
+
+      <div class="s-section">
+        <div class="s-title">Preguntas rápidas</div>
+        <div class="q-list">
+          <button class="q-btn" onclick="sendQ('¿Qué parte del incumplimiento es de planta vs última milla?')"><div class="q-tag">Atribución</div><div class="q-text">¿Planta o última milla?</div></button>
+          <button class="q-btn" onclick="sendQ('¿Cómo está la sobrancia y cuál es la subcausal principal?')"><div class="q-tag">Sobrancia</div><div class="q-text">Subcausal principal</div></button>
+          <button class="q-btn" onclick="sendQ('¿El backlog en ENEA está creciendo semana a semana?')"><div class="q-tag">Backlog ENEA</div><div class="q-text">¿Tendencia creciente?</div></button>
+          <button class="q-btn" onclick="sendQ('¿Por qué Prex no llega al 100%?')"><div class="q-tag">Prex</div><div class="q-text">¿Por qué no cierra el 100%?</div></button>
+          <button class="q-btn" onclick="sendQ('¿Qué zonas tienen mayor deterioro en la última semana?')"><div class="q-tag">Zonas</div><div class="q-text">¿Dónde se deterioró más?</div></button>
+          <button class="q-btn" onclick="sendQ('Dame un resumen ejecutivo para comité.')"><div class="q-tag">Comité</div><div class="q-text">Resumen ejecutivo rápido</div></button>
+          <button class="q-btn" onclick="sendQ('¿Cuáles subcausales de sobrancia son responsabilidad de planta?')"><div class="q-tag">Sobrancia / planta</div><div class="q-text">¿Qué es responsabilidad de planta?</div></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="dashboard" id="dashboard">
+      <div class="upload-cta" id="upload-cta">
+        <div class="big-icon">📈</div>
+        <p>SUBE EL EXCEL PARA VER EL DASHBOARD<br><br>Los gráficos se generan automáticamente con cada archivo que cargues.</p>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-panel">
+      <div class="chat-header">Agente — consulta en lenguaje natural</div>
+      <div class="messages" id="messages">
+        <div class="msg agent">
+          <div class="avatar av-a">OP</div>
+          <div class="bubble">Sube el Excel y el dashboard se arma solo. Después pregúntame lo que necesites — respondo con el dato real del archivo.</div>
+        </div>
+      </div>
+      <div class="input-row">
+        <input type="text" id="user-input" placeholder="Pregunta sobre el reporte..." onkeydown="if(event.key==='Enter')handleSend()" />
+        <button class="send-btn" onclick="handleSend()">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let fileStats = null;
+let charts = {};
+
+/* FILE HANDLING */
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('file-name-label').textContent = file.name;
+  document.getElementById('file-ok').style.display = 'flex';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const wsName = wb.SheetNames.find(n => n.includes('data') && n.includes('12')) || wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wsName]);
+      fileStats = buildStats(rows);
+      showKPIs(fileStats);
+      renderDashboard(fileStats);
+      addMessage('agent', `Archivo cargado: <strong>${rows.length.toLocaleString('es-CL')} registros</strong> en ${fileStats.semanas.length} semanas. Dashboard actualizado. ¿Qué querés analizar?`);
+    } catch(err) {
+      addMessage('agent', '⚠ No pude leer el archivo. Verificá que sea el reporte SLA con la hoja "data (12)".');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildStats(rows) {
+  const s = {
+    total:0, ia:0, ic:0, ca:0, cc:0,
+    byCat:{}, bySub:{}, byMacro:{}, bySem:{}, bySeg:{}, byZona:{},
+    semanas:[], topCat:'', topCatN:0
+  };
+  rows.forEach(r => {
+    const total=+r.total_piezas||0, ia=+r.incumple_acido||0, ic=+r.incumple_compania||0;
+    const ca=+r.cumple_acido||0, cc=+r.cumple_compania||0;
+    s.total+=total; s.ia+=ia; s.ic+=ic; s.ca+=ca; s.cc+=cc;
+    const cat=r.categoria_fallo||'SIN CAT', sub=r.subcategoria_fallo||'SIN SUB';
+    const macro=r.macrozona||'—', sem=r.semana_label||'—';
+    const seg=r.segmento_cliente||'—', zona=r.subzona||'—';
+    if(!s.byCat[cat]) s.byCat[cat]=0; s.byCat[cat]+=ia;
+    if(!s.bySub[sub]) s.bySub[sub]=0; s.bySub[sub]+=ia;
+    if(!s.byMacro[macro]) s.byMacro[macro]={total:0,ia:0,ic:0};
+    s.byMacro[macro].total+=total; s.byMacro[macro].ia+=ia; s.byMacro[macro].ic+=ic;
+    if(!s.bySem[sem]) s.bySem[sem]={total:0,ia:0,ic:0};
+    s.bySem[sem].total+=total; s.bySem[sem].ia+=ia; s.bySem[sem].ic+=ic;
+    if(!s.bySeg[seg]) s.bySeg[seg]={total:0,ia:0};
+    s.bySeg[seg].total+=total; s.bySeg[seg].ia+=ia;
+    if(!s.byZona[zona]) s.byZona[zona]={total:0,ia:0};
+    s.byZona[zona].total+=total; s.byZona[zona].ia+=ia;
+    if(!s.semanas.includes(sem)) s.semanas.push(sem);
+  });
+  const sorted = Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]);
+  s.topCat = sorted[0]?.[0]||'—'; s.topCatN = sorted[0]?.[1]||0;
+  return s;
+}
+
+function showKPIs(s) {
+  document.getElementById('kpi-section').style.display = 'block';
+  document.getElementById('k-total').textContent = s.total.toLocaleString('es-CL');
+  document.getElementById('k-sem').textContent = s.semanas.length + ' semanas';
+  document.getElementById('k-ia').textContent = s.ia.toLocaleString('es-CL');
+  document.getElementById('k-ia-pct').textContent = pct(s.ia, s.total) + '% del total';
+  document.getElementById('k-cc').textContent = s.cc.toLocaleString('es-CL');
+  document.getElementById('k-cc-pct').textContent = pct(s.cc, s.total) + '% del total';
+  document.getElementById('k-top').textContent = s.topCat;
+  document.getElementById('k-top-n').textContent = s.topCatN.toLocaleString('es-CL') + ' piezas';
+}
+
+function pct(a,b){ return b ? ((a/b)*100).toFixed(1) : '0.0'; }
+
+/* CHART COLORS */
+const C = {
+  red: '#d4372a', red2: '#e85040', red3: 'rgba(212,55,42,.18)',
+  blue: '#60a5fa', blue2: 'rgba(96,165,250,.18)',
+  green: '#4ade80', green2: 'rgba(74,222,128,.15)',
+  amber: '#fbbf24', amber2: 'rgba(251,191,36,.15)',
+  gray: '#383838', text: '#888', text2: '#4a4a4a',
+  surface: '#202020'
+};
+const chartDefaults = {
+  plugins: { legend: { display: false }, tooltip: {
+    backgroundColor: '#1a1a1a', borderColor: '#2a2a2a', borderWidth: 1,
+    titleColor: '#e4e4e4', bodyColor: '#888',
+    titleFont: { family: "'IBM Plex Mono'", size: 10 },
+    bodyFont: { family: "'IBM Plex Sans'", size: 11 }, padding: 10
+  }},
+  scales: {
+    x: { grid: { color: '#1f1f1f' }, ticks: { color: '#555', font: { family: "'IBM Plex Mono'", size: 9 } }, border: { color: '#2a2a2a' } },
+    y: { grid: { color: '#1f1f1f' }, ticks: { color: '#555', font: { family: "'IBM Plex Mono'", size: 9 } }, border: { color: '#2a2a2a' } }
+  }
+};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+function renderDashboard(s) {
+  destroyCharts();
+  const dash = document.getElementById('dashboard');
+  dash.innerHTML = '';
+
+  /* ---- TENDENCIA SEMANAL ---- */
+  const semOrdered = [...s.semanas].sort((a,b)=>a.localeCompare(b));
+  const semLabels = semOrdered.map(s => s.replace('30mar','30/03').replace('06abr','06/04').replace('13abr','13/04').replace('20abr','20/04').replace('27abr','27/04'));
+  const semIA = semOrdered.map(k => s.bySem[k]?.ia || 0);
+  const semIC = semOrdered.map(k => s.bySem[k]?.ic || 0);
+  const semTotal = semOrdered.map(k => s.bySem[k]?.total || 0);
+  const semPctIA = semIA.map((v,i) => semTotal[i] ? +((v/semTotal[i])*100).toFixed(2) : 0);
+
+  const block1 = mkCard('full', 'Tendencia semanal — incumplimiento ácido vs compañía', 'h200');
+  dash.appendChild(block1);
+  charts.tend = new Chart(block1.querySelector('canvas'), {
+    type:'bar',
+    data:{
+      labels: semLabels.length ? semLabels : ['Sin datos'],
+      datasets:[
+        { label:'Incumple ácido', data: semIA, backgroundColor: C.red, borderRadius:0, barPercentage:.4, categoryPercentage:.6 },
+        { label:'Incumple compañía', data: semIC, backgroundColor: C.blue, borderRadius:0, barPercentage:.4, categoryPercentage:.6 }
+      ]
+    },
+    options:{
+      ...chartDefaults, responsive:true, maintainAspectRatio:false,
+      plugins:{ ...chartDefaults.plugins, legend:{ display:true, labels:{ color:'#888', font:{ family:"'IBM Plex Mono'", size:9 }, boxWidth:10, padding:16 } } },
+      scales:{ ...chartDefaults.scales }
+    }
+  });
+
+  /* ---- CATEGORIAS FALLO ---- */
+  const catEntries = Object.entries(s.byCat).filter(([k])=>k!=='CUMPLE SLA').sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const maxCat = catEntries[0]?.[1] || 1;
+  const barBlock = document.createElement('div');
+  barBlock.className = 'chart-card full';
+  barBlock.innerHTML = `<div class="chart-title">Categorías de fallo — incumplimiento ácido (top 7)</div><div class="bar-table" id="cat-bars"></div>`;
+  dash.appendChild(barBlock);
+  const catBars = barBlock.querySelector('#cat-bars');
+  catEntries.forEach(([k,v]) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `<div class="bar-label" title="${k}">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((v/maxCat)*100)}%"></div></div><div class="bar-val">${v.toLocaleString('es-CL')}</div>`;
+    catBars.appendChild(row);
+  });
+
+  /* ---- SUBCAUSALES TOP ---- */
+  const subEntries = Object.entries(s.bySub).filter(([k])=>k&&k!=='').sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxSub = subEntries[0]?.[1] || 1;
+  const subBlock = document.createElement('div');
+  subBlock.className = 'chart-card full';
+  subBlock.innerHTML = `<div class="chart-title">Subcausales de fallo — top 8 por incumplimiento ácido</div><div class="bar-table" id="sub-bars"></div>`;
+  dash.appendChild(subBlock);
+  const subBars = subBlock.querySelector('#sub-bars');
+  subEntries.forEach(([k,v]) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    const shortened = k.length > 36 ? k.slice(0,36)+'…' : k;
+    row.innerHTML = `<div class="bar-label" title="${k}">${shortened}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((v/maxSub)*100)}%;background:${C.amber}"></div></div><div class="bar-val">${v.toLocaleString('es-CL')}</div>`;
+    subBars.appendChild(row);
+  });
+
+  /* ---- MACROZONA + SEGMENTO ---- */
+  const grid2 = document.createElement('div');
+  grid2.className = 'chart-grid';
+  dash.appendChild(grid2);
+
+  // Macrozona donut
+  const macroCard = mkCard('', 'Incumplimiento ácido por macrozona', 'h180');
+  grid2.appendChild(macroCard);
+  const macroEntries = Object.entries(s.byMacro).sort((a,b)=>b[1].ia-a[1].ia);
+  charts.macro = new Chart(macroCard.querySelector('canvas'), {
+    type:'doughnut',
+    data:{
+      labels: macroEntries.map(([k])=>k),
+      datasets:[{ data: macroEntries.map(([,v])=>v.ia), backgroundColor:[C.red, C.blue, C.amber, C.green], borderWidth:0, hoverOffset:4 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ ...chartDefaults.plugins, legend:{ display:true, position:'right', labels:{ color:'#888', font:{ family:"'IBM Plex Mono'", size:9 }, boxWidth:8, padding:10 } } }
+    }
+  });
+
+  // Segmentos bar
+  const segEntries = Object.entries(s.bySeg).sort((a,b)=>b[1].ia-a[1].ia).slice(0,7);
+  const segCard = mkCard('', '% incumplimiento ácido por segmento', 'h180');
+  grid2.appendChild(segCard);
+  charts.seg = new Chart(segCard.querySelector('canvas'), {
+    type:'bar',
+    data:{
+      labels: segEntries.map(([k])=>k.length>14?k.slice(0,14)+'…':k),
+      datasets:[{ data: segEntries.map(([,v])=>v.total?+((v.ia/v.total)*100).toFixed(1):0), backgroundColor: C.red3, borderColor: C.red, borderWidth:1, borderRadius:0, barPercentage:.55 }]
+    },
+    options:{
+      ...chartDefaults, responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ ...chartDefaults.scales.x, ticks:{ ...chartDefaults.scales.x.ticks, maxRotation:30 } },
+        y:{ ...chartDefaults.scales.y, ticks:{ ...chartDefaults.scales.y.ticks, callback: v => v+'%' } }
+      }
+    }
+  });
+
+  /* ---- % INCUMPLIMIENTO SEMANAL (línea) ---- */
+  const lineBlock = mkCard('full', '% incumplimiento ácido semanal sobre total piezas', 'h200');
+  dash.appendChild(lineBlock);
+  charts.line = new Chart(lineBlock.querySelector('canvas'), {
+    type:'line',
+    data:{
+      labels: semLabels.length ? semLabels : ['Sin datos'],
+      datasets:[{ data: semPctIA, borderColor: C.red, backgroundColor: C.red3, fill:true, tension:.3, pointBackgroundColor: C.red, pointRadius:4, pointHoverRadius:6, borderWidth:2 }]
+    },
+    options:{
+      ...chartDefaults, responsive:true, maintainAspectRatio:false,
+      scales:{
+        ...chartDefaults.scales,
+        y:{ ...chartDefaults.scales.y, ticks:{ ...chartDefaults.scales.y.ticks, callback: v => v+'%' } }
+      }
+    }
+  });
+
+  /* ---- TOP ZONAS ---- */
+  const zonaEntries = Object.entries(s.byZona).filter(([k])=>k&&k!=='—').sort((a,b)=>b[1].ia-a[1].ia).slice(0,10);
+  const maxZona = zonaEntries[0]?.[1]?.ia || 1;
+  const zonaBlock = document.createElement('div');
+  zonaBlock.className = 'chart-card full';
+  zonaBlock.innerHTML = `<div class="chart-title">Top 10 zonas por incumplimiento ácido</div><div class="bar-table" id="zona-bars"></div>`;
+  dash.appendChild(zonaBlock);
+  const zonaBars = zonaBlock.querySelector('#zona-bars');
+  zonaEntries.forEach(([k,v]) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `<div class="bar-label">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((v.ia/maxZona)*100)}%;background:${C.blue}"></div></div><div class="bar-val">${v.ia.toLocaleString('es-CL')}</div>`;
+    zonaBars.appendChild(row);
+  });
+}
+
+function mkCard(cls, title, hClass) {
+  const d = document.createElement('div');
+  d.className = `chart-card ${cls}`;
+  d.innerHTML = `<div class="chart-title">${title}</div><div class="chart-wrap ${hClass}"><canvas></canvas></div>`;
+  return d;
+}
+
+/* CHAT */
+function sendQ(q) { document.getElementById('user-input').value = q; handleSend(); }
+
+function handleSend() {
+  const input = document.getElementById('user-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  addMessage('user', q);
+  showTyping();
+  callAPI(q, fileStats);
+}
+
+function buildContext(q, s) {
+  const base = `Eres el agente analítico del Subgerente de Operaciones de Chilexpress. Respondes directo, sin rodeos, con criterio operativo. Foco principal: atribución de responsabilidad — distinguir fallas de planta (sorter con 13% error promedio, encaminamiento, reloj operativo) vs última milla (carrier, horario entrega) vs datos/cliente (dirección incorrecta, destinatario desconocido). En sobrancia siempre distingue subcausales por origen. Responde en máximo 6 oraciones con dato concreto y conclusión accionable.`;
+  if (!s) return `${base}\n\nDATO BASE (reporte 30mar–3may 2026): 1.415.073 piezas, incumple ácido 84.809 (6%), top causas: SOBRANCIA 28.131, REZAGO DESTINO 21.149, REZAGO ORIGEN 12.351. Top subcausales: SIN RETENCIONES 12.302, DOMICILIO CERRADO 11.029, NO ENTREGA POR TIEMPO 4.633, MAL ENCAMINADAS 4.288, REZAGO ENEA 4.223. RM 5.6% incumplimiento vs Regiones 3.3%. Prex 9.4%, CBT 1.1%.\n\nPREGUNTA: "${q}"`;
+
+  const topCats = Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([k,v])=>`${k}:${v.toLocaleString()}`).join(', ');
+  const topSubs = Object.entries(s.bySub).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>`${k}:${v.toLocaleString()}`).join(', ');
+  const macros = Object.entries(s.byMacro).map(([k,v])=>`${k}(total:${v.total.toLocaleString()},ia:${v.ia.toLocaleString()},${pct(v.ia,v.total)}%)`).join('; ');
+  const sems = Object.entries(s.bySem).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>`${k}→ia:${v.ia.toLocaleString()}(${pct(v.ia,v.total)}%)`).join(' | ');
+  const segs = Object.entries(s.bySeg).sort((a,b)=>b[1].ia-a[1].ia).slice(0,8).map(([k,v])=>`${k}:${v.ia.toLocaleString()}(${pct(v.ia,v.total)}%)`).join('; ');
+  const zonas = Object.entries(s.byZona).sort((a,b)=>b[1].ia-a[1].ia).slice(0,10).map(([k,v])=>`${k}:${v.ia.toLocaleString()}`).join(', ');
+
+  return `${base}\n\nDATO REAL DEL ARCHIVO:\nTotal:${s.total.toLocaleString()} | Semanas:${s.semanas.join(',')} | IA:${s.ia.toLocaleString()}(${pct(s.ia,s.total)}%) | IC:${s.ic.toLocaleString()}(${pct(s.ic,s.total)}%)\nCategorías(ia):${topCats}\nSubcausales(ia):${topSubs}\nMacrozona:${macros}\nPor semana:${sems}\nSegmentos:${segs}\nTop zonas:${zonas}\n\nPREGUNTA: "${q}"`;
+}
+
+async function callAPI(q, s) {
+  try {
+    const res = await fetch('/.netlify/functions/gemini', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        contents:[{ parts:[{ text: buildContext(q, s) }] }],
+        generationConfig:{ maxOutputTokens: 1000, temperature: 0.3 }
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+    if (data.error) {
+      addMessage('agent', '⚠ Error: ' + (data.error.message || 'Intenta nuevamente.'));
+      return;
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta.';
+    addMessage('agent', text.replace(/\n/g, '<br>'));
+  } catch(e) {
+    removeTyping();
+    addMessage('agent', '⚠ Error de conexión. Verificá que tenés internet.');
+  }
+}
+
+function addMessage(role, html) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const av = document.createElement('div');
+  av.className = `avatar av-${role==='agent'?'a':'u'}`;
+  av.textContent = role==='agent'?'OP':'TÚ';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = html;
+  div.appendChild(av); div.appendChild(bubble);
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+let typingEl = null;
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  typingEl = document.createElement('div');
+  typingEl.className = 'msg agent';
+  typingEl.innerHTML = `<div class="avatar av-a">OP</div><div class="bubble"><div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div></div>`;
+  msgs.appendChild(typingEl);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function removeTyping() { if(typingEl){ typingEl.remove(); typingEl=null; } }
+</script>
+</body>
+</html>
